@@ -3,6 +3,7 @@ import random
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import Protocol
 
 from openpyxl import Workbook, load_workbook
 
@@ -15,9 +16,48 @@ class JournalError(Exception):
     """Ошибка структуры или чтения журнала."""
 
 
+class JournalWriter(Protocol):
+    def append_record(
+        self,
+        last_name: str,
+        first_name: str,
+        ticket_number: int,
+        timestamp: datetime,
+    ) -> None:
+        """Добавляет запись в журнал."""
+
+
+class TicketGenerator(Protocol):
+    def generate(self) -> int:
+        """Возвращает номер билета."""
+
+
+class RandomTicketGenerator:
+    """Генерирует случайные номера экзаменационных билетов."""
+
+    def generate(self) -> int:
+        return random.randint(1, 20)
+
+
+class ExcelJournalWriter:
+    """Сохраняет записи в Excel-журнал с атомарной заменой файла."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def append_record(
+        self,
+        last_name: str,
+        first_name: str,
+        ticket_number: int,
+        timestamp: datetime,
+    ) -> None:
+        append_record(self.path, last_name, first_name, ticket_number, timestamp)
+
+
 def generate_ticket() -> int:
-    """Возвращает случайный номер билета от 1 до 20."""
-    return random.randint(1, 20)
+    """Совместимый фасад для генерации случайного номера билета."""
+    return RandomTicketGenerator().generate()
 
 
 def _load_or_create_workbook(path: Path):

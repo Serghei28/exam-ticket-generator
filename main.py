@@ -4,7 +4,14 @@ from typing import Callable, Optional
 
 import msvcrt
 
-from journal import JournalError, append_record, generate_ticket
+from journal import (
+    ExcelJournalWriter,
+    JournalError,
+    JournalWriter,
+    TicketGenerator,
+    append_record,
+    generate_ticket,
+)
 
 
 JOURNAL_PATH = Path(__file__).resolve().with_name("journal.xlsx")
@@ -60,12 +67,15 @@ def save_with_retry(
     first_name: str,
     ticket_number: int,
     timestamp: datetime,
+    writer: JournalWriter | None = None,
 ) -> bool:
     """Повторяет сохранение той же записи после блокировки Excel."""
+    if writer is None:
+        writer = _LegacyWriter()
+
     while True:
         try:
-            append_record(
-                JOURNAL_PATH,
+            writer.append_record(
                 last_name,
                 first_name,
                 ticket_number,
@@ -79,8 +89,33 @@ def save_with_retry(
                 return False
 
 
-def main() -> None:
+class _LegacyWriter:
+    """Адаптер для сохранения совместимости с существующим API и тестами."""
+
+    def append_record(
+        self,
+        last_name: str,
+        first_name: str,
+        ticket_number: int,
+        timestamp: datetime,
+    ) -> None:
+        append_record(
+            JOURNAL_PATH,
+            last_name,
+            first_name,
+            ticket_number,
+            timestamp,
+        )
+
+
+def main(
+    writer: JournalWriter | None = None,
+    ticket_generator: TicketGenerator | None = None,
+) -> None:
     print("Для выхода нажмите ESC.")
+    configured_writer = writer
+    writer = writer or ExcelJournalWriter(JOURNAL_PATH)
+    ticket_generator = ticket_generator or _LegacyTicketGenerator()
 
     while True:
         last_name = read_name("Last name: ")
@@ -91,18 +126,39 @@ def main() -> None:
         if first_name is None:
             return
 
-        ticket_number = generate_ticket()
+        ticket_number = ticket_generator.generate()
         timestamp = datetime.now()
         print(f"Билет № {ticket_number}")
 
         try:
-            saved = save_with_retry(last_name, first_name, ticket_number, timestamp)
+            if configured_writer is None:
+                saved = save_with_retry(
+                    last_name,
+                    first_name,
+                    ticket_number,
+                    timestamp,
+                )
+            else:
+                saved = save_with_retry(
+                    last_name,
+                    first_name,
+                    ticket_number,
+                    timestamp,
+                    writer,
+                )
         except JournalError as error:
             print(f"Ошибка журнала: {error}")
             return
 
         if not saved:
             return
+
+
+class _LegacyTicketGenerator:
+    """Адаптер для сохранения совместимости с существующим API и тестами."""
+
+    def generate(self) -> int:
+        return generate_ticket()
 
 
 if __name__ == "__main__":
