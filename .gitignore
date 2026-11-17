@@ -224,3 +224,9 @@ __pycache__/
 .pytest_cache/
 journal.xlsx
 ~$*.xlsx
+results.xlsx
+app.log
+.results-*.xlsx
+students.xlsx
+tickets.docx
+~$*.docx
