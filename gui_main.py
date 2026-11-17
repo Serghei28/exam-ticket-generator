@@ -11,7 +11,18 @@ from ui import ExamTicketApp
 PROJECT_DIR = Path(__file__).resolve().parent
 
 
+def _enable_high_dpi() -> None:
+    """Keeps text sharp on scaled Windows displays instead of bitmap-stretched."""
+    try:
+        import ctypes
+
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except (AttributeError, OSError):
+        pass
+
+
 def main() -> None:
+    _enable_high_dpi()
     logging.basicConfig(
         filename=PROJECT_DIR / "app.log",
         level=logging.INFO,
